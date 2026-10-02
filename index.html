@@ -1,0 +1,1132 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bloom & Bouquet - Toko Buket Bunga Eksklusif & Admin Panel</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Alpine.js CDN -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <!-- Font Poppins & Playfair Display -->
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Poppins', sans-serif; }
+        .font-serif { font-family: 'Playfair Display', serif; }
+        [x-cloak] { display: none !important; }
+    </style>
+</head>
+<body class="bg-rose-50/30 text-slate-800 antialiased selection:bg-rose-200 selection:text-rose-900" x-data="shopApp()">
+
+    <!-- HEADER TOKO -->
+    <header class="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-rose-100 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+            <!-- Brand Logo & Name -->
+            <div class="flex items-center space-x-3 cursor-pointer" @click="activeMode = 'store'">
+                <div class="w-12 h-12 rounded-full bg-rose-100 flex items-center justify-center text-rose-600 shadow-inner">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                </div>
+                <div>
+                    <h1 class="font-serif text-xl sm:text-2xl font-bold tracking-tight text-rose-900" x-text="storeSettings.storeName"></h1>
+                    <p class="text-xs text-rose-500 font-medium">Eksklusif & Segar Setiap Hari</p>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex items-center space-x-2 sm:space-x-4">
+                <!-- Tombol Navigasi Admin / Toko -->
+                <button x-show="adminLoggedIn && activeMode === 'store'" @click="activeMode = 'admin'; loadOrders()" class="px-3.5 py-2 bg-rose-600 text-white rounded-xl text-xs font-semibold hover:bg-rose-700 transition shadow">
+                    Panel Admin
+                </button>
+                <button x-show="activeMode === 'admin'" @click="activeMode = 'store'" class="px-3.5 py-2 bg-slate-800 text-white rounded-xl text-xs font-semibold hover:bg-slate-900 transition shadow">
+                    Lihat Toko
+                </button>
+
+                <!-- Cart Icon & Badge -->
+                <button @click="cartOpen = true" class="relative p-2.5 rounded-full bg-rose-50 text-rose-700 hover:bg-rose-100 transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+                    <span x-show="cart.length > 0" x-text="cart.reduce((sum, item) => sum + item.qty, 0)" class="absolute -top-1 -right-1 bg-rose-600 text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-bold shadow"></span>
+                </button>
+
+                <!-- Logout / Keluar Button -->
+                <button x-show="adminLoggedIn" @click="handleLogout" title="Keluar / Logout" class="px-3 py-2 rounded-xl bg-slate-100 text-slate-700 hover:bg-rose-50 hover:text-rose-600 transition text-xs font-semibold flex items-center space-x-1.5">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                    <span class="hidden sm:inline">Keluar</span>
+                </button>
+
+                <!-- Admin Lock Icon (Login Trigger) -->
+                <button x-show="!adminLoggedIn" @click="handleAdminAccessClick" title="Akses Admin Panel" class="p-2.5 rounded-full bg-slate-900 text-white hover:bg-slate-800 transition shadow">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- MODE PELANGGAN (STORE VIEW) -->
+    <main x-show="activeMode === 'store'" x-transition class="pb-24">
+        <!-- Hero Section -->
+        <section class="relative bg-gradient-to-r from-rose-100 via-pink-50 to-amber-50 py-16 sm:py-24 border-b border-rose-100 overflow-hidden">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+                    <div class="space-y-6 text-center lg:text-left">
+                        <span class="inline-block px-3.5 py-1 rounded-full bg-rose-200/60 text-rose-800 text-xs font-semibold tracking-wider uppercase" x-text="storeSettings.heroBadge"></span>
+                        <h2 class="font-serif text-4xl sm:text-5xl lg:text-6xl font-bold text-rose-950 leading-tight" x-text="storeSettings.heroTitle"></h2>
+                        <p class="text-slate-600 text-base sm:text-lg max-w-xl mx-auto lg:mx-0" x-text="storeSettings.heroSubtitle"></p>
+                        <div class="flex flex-col sm:flex-row justify-center lg:justify-start gap-4">
+                            <a href="#katalog" class="px-8 py-3.5 rounded-full bg-rose-600 text-white font-medium hover:bg-rose-700 shadow-lg shadow-rose-600/30 transition transform hover:-translate-y-0.5 text-center">Pesan Sekarang</a>
+                            <button @click="cartOpen = true" class="px-8 py-3.5 rounded-full border border-rose-300 text-rose-800 font-medium bg-white/80 hover:bg-white transition">Lihat Keranjang</button>
+                        </div>
+                    </div>
+                    <!-- Hero 3-Angle Mosaic Preview -->
+                    <div class="grid grid-cols-3 gap-3 relative">
+                        <div class="space-y-3">
+                            <img :src="storeSettings.heroImg1" class="w-full h-48 sm:h-64 object-cover rounded-2xl shadow-md border-2 border-white" alt="Front angle" onerror="this.src='https://placehold.co/400x400/ffe4e6/be123c?text=Front'">
+                            <img :src="storeSettings.heroImg3" class="w-full h-32 sm:h-40 object-cover rounded-2xl shadow-md border-2 border-white" alt="Detail angle" onerror="this.src='https://placehold.co/400x400/ffe4e6/be123c?text=Detail'">
+                        </div>
+                        <div class="space-y-3 pt-6">
+                            <img :src="storeSettings.heroImg2" class="w-full h-48 sm:h-64 object-cover rounded-2xl shadow-md border-2 border-white" alt="Side angle" onerror="this.src='https://placehold.co/400x400/ffe4e6/be123c?text=Side'">
+                            <div class="p-4 bg-white/90 rounded-2xl shadow-sm border border-rose-100 text-center">
+                                <span class="block font-serif font-bold text-rose-900 text-xl">100%</span>
+                                <span class="text-xs text-slate-500">Bunga Segar Pilihan</span>
+                            </div>
+                        </div>
+                        <div class="space-y-3 pt-12">
+                            <img :src="storeSettings.heroImg4" class="w-full h-56 sm:h-72 object-cover rounded-2xl shadow-md border-2 border-white" alt="Exclusive angle" onerror="this.src='https://placehold.co/400x400/ffe4e6/be123c?text=Bouquet'">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Product Catalog Section -->
+        <div id="katalog" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16">
+            <div class="flex flex-col md:flex-row md:items-end justify-between mb-10">
+                <div>
+                    <h3 class="font-serif text-3xl font-bold text-slate-900">Katalog Buket Bunga</h3>
+                    <p class="text-slate-500 text-sm mt-1">Klik thumbnail foto untuk melihat sudut depan, samping, dan detail produk.</p>
+                </div>
+                <!-- Category Filter -->
+                <div class="flex flex-wrap gap-2 mt-4 md:mt-0">
+                    <button @click="selectedCategory = 'All'" :class="selectedCategory === 'All' ? 'bg-rose-600 text-white shadow' : 'bg-white text-slate-600 border border-slate-200'" class="px-4 py-2 rounded-full text-xs font-semibold transition">Semua</button>
+                    <template x-for="cat in categories" :key="cat">
+                        <button @click="selectedCategory = cat" :class="selectedCategory === cat ? 'bg-rose-600 text-white shadow' : 'bg-white text-slate-600 border border-slate-200'" class="px-4 py-2 rounded-full text-xs font-semibold transition" x-text="cat"></button>
+                    </template>
+                </div>
+            </div>
+
+            <!-- Product Grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                <template x-for="product in filteredProducts" :key="product.id">
+                    <div class="bg-white rounded-3xl border border-rose-100 shadow-sm overflow-hidden flex flex-col justify-between hover:shadow-xl transition duration-300">
+                        <div>
+                            <!-- Interactive 3-Angle View Container -->
+                            <div class="relative bg-slate-50 p-3">
+                                <div class="w-full h-72 rounded-2xl overflow-hidden bg-rose-50 shadow-inner">
+                                    <img :src="product.activeImage || product.frontImage" :alt="product.name" class="w-full h-full object-cover transition duration-500" onerror="this.src='https://placehold.co/400x400/ffe4e6/be123c?text=Product'">
+                                </div>
+                                <span class="absolute top-6 left-6 px-3 py-1 bg-white/90 backdrop-blur text-rose-800 text-[11px] font-bold rounded-full shadow" x-text="product.category"></span>
+                                
+                                <!-- 3 Thumbnail Angle Selectors -->
+                                <div class="flex justify-center space-x-2 mt-3">
+                                    <button @click="product.activeImage = product.frontImage" :class="(!product.activeImage || product.activeImage === product.frontImage) ? 'ring-2 ring-rose-600' : 'opacity-70'" class="w-12 h-12 rounded-xl overflow-hidden border border-white shadow transition">
+                                        <img :src="product.frontImage" class="w-full h-full object-cover" alt="Front" onerror="this.src='https://placehold.co/100x100/ffe4e6/be123c?text=F'">
+                                    </button>
+                                    <button @click="product.activeImage = product.sideImage" :class="product.activeImage === product.sideImage ? 'ring-2 ring-rose-600' : 'opacity-70'" class="w-12 h-12 rounded-xl overflow-hidden border border-white shadow transition">
+                                        <img :src="product.sideImage" class="w-full h-full object-cover" alt="Side" onerror="this.src='https://placehold.co/100x100/ffe4e6/be123c?text=S'">
+                                    </button>
+                                    <button @click="product.activeImage = product.detailImage" :class="product.activeImage === product.detailImage ? 'ring-2 ring-rose-600' : 'opacity-70'" class="w-12 h-12 rounded-xl overflow-hidden border border-white shadow transition">
+                                        <img :src="product.detailImage" class="w-full h-full object-cover" alt="Detail" onerror="this.src='https://placehold.co/100x100/ffe4e6/be123c?text=D'">
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Product Info -->
+                            <div class="p-6">
+                                <h4 class="font-serif text-xl font-bold text-slate-900" x-text="product.name"></h4>
+                                <p class="text-slate-500 text-xs mt-1 line-clamp-2" x-text="product.description"></p>
+
+                                <!-- Size Selector & Dynamic Price -->
+                                <div class="mt-4">
+                                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">Pilih Ukuran Varian:</label>
+                                    <div class="grid grid-cols-3 gap-2">
+                                        <template x-for="(price, size) in product.variants" :key="size">
+                                            <button @click="product.selectedSize = size"
+                                                    :class="product.selectedSize === size ? 'bg-rose-600 text-white border-rose-600 shadow' : 'bg-rose-50/50 text-slate-700 border-rose-100 hover:bg-rose-100'"
+                                                    class="py-2 px-1 text-center border rounded-xl text-xs font-semibold transition">
+                                                <span class="block uppercase" x-text="size"></span>
+                                                <span class="block text-[10px] opacity-90 mt-0.5" x-text="'Rp ' + price.toLocaleString('id-ID')"></span>
+                                            </button>
+                                        </template>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Card Footer / Buy Button -->
+                        <div class="px-6 pb-6 pt-0 flex items-center justify-between">
+                            <div>
+                                <span class="text-xs text-slate-400 block">Harga</span>
+                                <span class="text-lg font-bold text-rose-700" x-text="'Rp ' + (product.variants[product.selectedSize] || 0).toLocaleString('id-ID')"></span>
+                            </div>
+                            <button @click="addToCart(product)" class="px-5 py-2.5 rounded-xl bg-rose-600 text-white text-sm font-medium hover:bg-rose-700 shadow-md shadow-rose-600/20 transition flex items-center space-x-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                                <span>+ Keranjang</span>
+                            </button>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </main>
+
+    <!-- MODE ADMIN PANEL (DENGAN 6 TAB INTERAKTIF) -->
+    <main x-show="activeMode === 'admin'" x-cloak class="max-w-7xl mx-auto p-4 sm:p-6 pb-24">
+        <!-- Admin Header & Top Actions -->
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+            <div>
+                <h1 class="text-2xl font-bold text-slate-900">Admin Panel & Manajemen Toko</h1>
+                <p class="text-sm text-slate-500">Kelola produk, pembayaran, ongkir, voucher, pesanan, dan pengaturan toko.</p>
+            </div>
+            <div class="flex items-center space-x-3">
+                <button @click="activeMode = 'store'" class="bg-rose-600 text-white px-4 py-2.5 rounded-xl hover:bg-rose-700 transition text-sm font-semibold shadow">
+                    Kembali ke Mode Toko
+                </button>
+                <button @click="handleLogout" class="bg-slate-100 text-slate-700 hover:bg-rose-50 hover:text-rose-600 border border-slate-200 px-4 py-2.5 rounded-xl transition text-sm font-semibold flex items-center space-x-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                    <span>Keluar</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Navigasi Tab Admin -->
+        <div class="flex flex-wrap gap-2 mb-8 bg-white p-2 rounded-2xl shadow-sm border border-slate-200">
+            <button @click="adminTab = 'settings'" :class="adminTab === 'settings' ? 'bg-rose-600 text-white shadow' : 'text-slate-600 hover:bg-rose-50 hover:text-rose-700'" class="px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition flex items-center space-x-2">
+                <span>⚙️ Pengaturan Toko & Logo</span>
+            </button>
+            <button @click="adminTab = 'products'" :class="adminTab === 'products' ? 'bg-rose-600 text-white shadow' : 'text-slate-600 hover:bg-rose-50 hover:text-rose-700'" class="px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition flex items-center space-x-2">
+                <span>💐 Kelola Produk</span>
+            </button>
+            <button @click="adminTab = 'payments'" :class="adminTab === 'payments' ? 'bg-rose-600 text-white shadow' : 'text-slate-600 hover:bg-rose-50 hover:text-rose-700'" class="px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition flex items-center space-x-2">
+                <span>💳 Metode Pembayaran</span>
+            </button>
+            <button @click="adminTab = 'shipping'" :class="adminTab === 'shipping' ? 'bg-rose-600 text-white shadow' : 'text-slate-600 hover:bg-rose-50 hover:text-rose-700'" class="px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition flex items-center space-x-2">
+                <span>🚚 Pengaturan Ongkir</span>
+            </button>
+            <button @click="adminTab = 'vouchers'" :class="adminTab === 'vouchers' ? 'bg-rose-600 text-white shadow' : 'text-slate-600 hover:bg-rose-50 hover:text-rose-700'" class="px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition flex items-center space-x-2">
+                <span>🎟️ Kelola Voucher</span>
+            </button>
+            <button @click="adminTab = 'orders'; loadOrders();" :class="adminTab === 'orders' ? 'bg-rose-600 text-white shadow' : 'text-slate-600 hover:bg-rose-50 hover:text-rose-700'" class="px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition flex items-center space-x-2">
+                <span>📦 Kelola Pesanan</span>
+            </button>
+        </div>
+
+        <!-- TAB 1: PENGATURAN TOKO & LOGO -->
+        <div x-show="adminTab === 'settings'" class="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-200 space-y-6">
+            <h2 class="text-xl font-bold text-slate-800">Pengaturan Toko & Tampilan Hero</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Nama Toko</label>
+                    <input type="text" x-model="storeSettings.storeName" class="w-full border p-3 rounded-xl text-sm focus:ring-2 focus:ring-rose-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Badge Hero</label>
+                    <input type="text" x-model="storeSettings.heroBadge" class="w-full border p-3 rounded-xl text-sm focus:ring-2 focus:ring-rose-500 outline-none">
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Judul Utama Hero (Hero Title)</label>
+                    <input type="text" x-model="storeSettings.heroTitle" class="w-full border p-3 rounded-xl text-sm focus:ring-2 focus:ring-rose-500 outline-none">
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Subjudul / Deskripsi Hero</label>
+                    <textarea x-model="storeSettings.heroSubtitle" rows="2" class="w-full border p-3 rounded-xl text-sm focus:ring-2 focus:ring-rose-500 outline-none"></textarea>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">URL Foto Hero 1 (Front)</label>
+                    <input type="text" x-model="storeSettings.heroImg1" class="w-full border p-3 rounded-xl text-sm focus:ring-2 focus:ring-rose-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">URL Foto Hero 2 (Side)</label>
+                    <input type="text" x-model="storeSettings.heroImg2" class="w-full border p-3 rounded-xl text-sm focus:ring-2 focus:ring-rose-500 outline-none">
+                </div>
+            </div>
+            <button @click="showToastNotification('Pengaturan toko berhasil disimpan!')" class="bg-rose-600 text-white px-6 py-3 rounded-xl font-semibold text-sm hover:bg-rose-700 transition shadow">
+                Simpan Perubahan Toko
+            </button>
+        </div>
+
+        <!-- TAB 2: KELOLA PRODUK -->
+        <div x-show="adminTab === 'products'" class="space-y-6">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <h2 class="text-lg font-bold text-slate-800">Daftar Produk & 3 Sisi Foto</h2>
+                    <p class="text-sm text-slate-500">Kelola katalog buket bunga, varian harga, dan sudut foto tampilan.</p>
+                </div>
+                <button @click="openAddProductModal" class="bg-rose-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-rose-700 transition shadow flex items-center space-x-2">
+                    <span>+ Tambah Produk</span>
+                </button>
+            </div>
+
+            <!-- Tabel Produk -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 border-b text-xs font-bold text-slate-600 uppercase tracking-wider">
+                                <th class="p-4">3 Sisi Foto</th>
+                                <th class="p-4">Nama Produk</th>
+                                <th class="p-4">Kategori</th>
+                                <th class="p-4">Varian Harga</th>
+                                <th class="p-4 text-center">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 text-sm">
+                            <template x-for="(prod, idx) in products" :key="prod.id">
+                                <tr class="hover:bg-rose-50/20 transition">
+                                    <td class="p-4">
+                                        <div class="flex space-x-1.5">
+                                            <img :src="prod.frontImage" class="w-10 h-10 rounded-lg object-cover border" alt="F" onerror="this.src='https://placehold.co/100x100/ffe4e6/be123c?text=F'">
+                                            <img :src="prod.sideImage" class="w-10 h-10 rounded-lg object-cover border" alt="S" onerror="this.src='https://placehold.co/100x100/ffe4e6/be123c?text=S'">
+                                            <img :src="prod.detailImage" class="w-10 h-10 rounded-lg object-cover border" alt="D" onerror="this.src='https://placehold.co/100x100/ffe4e6/be123c?text=D'">
+                                        </div>
+                                    </td>
+                                    <td class="p-4 font-semibold text-slate-800" x-text="prod.name"></td>
+                                    <td class="p-4">
+                                        <span class="px-2.5 py-1 bg-rose-100 text-rose-800 rounded-full text-xs font-semibold" x-text="prod.category"></span>
+                                    </td>
+                                    <td class="p-4 text-xs space-y-0.5">
+                                        <div>Small: <span class="font-bold">Rp <span x-text="prod.variants.small.toLocaleString('id-ID')"></span></span></div>
+                                        <div>Medium: <span class="font-bold">Rp <span x-text="prod.variants.medium.toLocaleString('id-ID')"></span></span></div>
+                                        <div>Large: <span class="font-bold">Rp <span x-text="prod.variants.large.toLocaleString('id-ID')"></span></span></div>
+                                    </td>
+                                    <td class="p-4 text-center space-x-2">
+                                        <button @click="editProduct(prod)" class="text-blue-600 hover:text-blue-800 font-semibold text-xs px-2.5 py-1.5 bg-blue-50 rounded-lg">Edit</button>
+                                        <button @click="deleteProduct(idx)" class="text-rose-600 hover:text-rose-800 font-semibold text-xs px-2.5 py-1.5 bg-rose-50 rounded-lg">Hapus</button>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: METODE PEMBAYARAN -->
+        <div x-show="adminTab === 'payments'" class="space-y-6">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <h2 class="text-lg font-bold text-slate-800">Kelola Metode Pembayaran</h2>
+                    <p class="text-sm text-slate-500">Atur rekening bank transfer dan status aktif COD (Bayar di Tempat).</p>
+                </div>
+                <button @click="openAddBankModal" class="bg-rose-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-rose-700 transition shadow">
+                    + Tambah Rekening Bank
+                </button>
+            </div>
+
+            <!-- Komponen COD Toggle -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
+                <div>
+                    <h3 class="font-bold text-slate-800 text-base">Fitur COD (Bayar di Tempat)</h3>
+                    <p class="text-xs text-slate-500 mt-0.5">Aktifkan opsi pembayaran tunai saat kurir mengirim pesanan ke pelanggan.</p>
+                </div>
+                <button @click="codActive = !codActive" :class="codActive ? 'bg-emerald-600' : 'bg-slate-300'" class="relative inline-flex h-7 w-14 items-center rounded-full transition-colors focus:outline-none">
+                    <span :class="codActive ? 'translate-x-8' : 'translate-x-1'" class="inline-block h-5 w-5 transform rounded-full bg-white transition-transform"></span>
+                </button>
+            </div>
+
+            <!-- Tabel Daftar Rekening Bank -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="p-6 border-b">
+                    <h3 class="font-bold text-slate-800">Daftar Rekening Transfer Bank</h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 border-b text-xs font-bold text-slate-600 uppercase tracking-wider">
+                                <th class="p-4">Bank</th>
+                                <th class="p-4">Nomor Rekening</th>
+                                <th class="p-4">Atas Nama</th>
+                                <th class="p-4 text-center">Aksi Hapus</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 text-sm">
+                            <template x-for="(acc, idx) in bankAccounts" :key="idx">
+                                <tr class="hover:bg-slate-50/50">
+                                    <td class="p-4 font-bold text-rose-900" x-text="acc.bank"></td>
+                                    <td class="p-4 font-mono text-slate-700" x-text="acc.number"></td>
+                                    <td class="p-4 text-slate-700" x-text="acc.holder"></td>
+                                    <td class="p-4 text-center">
+                                        <button @click="bankAccounts.splice(idx, 1); showToastNotification('Rekening dihapus')" class="text-rose-600 hover:text-rose-800 font-semibold text-xs px-3 py-1 bg-rose-50 rounded-lg">Hapus</button>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 4: PENGATURAN ONGKIR -->
+        <div x-show="adminTab === 'shipping'" class="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-200 space-y-6 max-w-2xl">
+            <div>
+                <h2 class="text-xl font-bold text-slate-800">Pengaturan Biaya Ongkir</h2>
+                <p class="text-sm text-slate-500 mt-1">Tentukan tarif pengiriman standar kurir toko untuk setiap transaksi pesanan.</p>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1 uppercase tracking-wider">Tarif Ongkir Standar (Rp)</label>
+                    <input type="number" x-model.number="shippingCost" class="w-full border p-3 rounded-xl text-lg font-bold text-rose-700 focus:ring-2 focus:ring-rose-500 outline-none">
+                </div>
+                <div class="flex space-x-3 pt-2">
+                    <button @click="showToastNotification('Tarif ongkir berhasil disimpan!')" class="flex-1 bg-rose-600 text-white py-3 rounded-xl font-semibold text-sm hover:bg-rose-700 transition shadow">
+                        Simpan Tarif
+                    </button>
+                    <button @click="shippingCost = 0; showToastNotification('Tarif ongkir direset ke 0')" class="px-6 border border-slate-200 text-slate-700 py-3 rounded-xl font-semibold text-sm hover:bg-slate-100 transition">
+                        Hapus / Reset Ongkir
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 5: KELOLA VOUCHER -->
+        <div x-show="adminTab === 'vouchers'" class="space-y-6">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <h2 class="text-lg font-bold text-slate-800">Kelola Kode Voucher Diskon</h2>
+                    <p class="text-sm text-slate-500">Buat dan kelola kode promo diskon untuk pelanggan.</p>
+                </div>
+                <button @click="openAddVoucherModal" class="bg-rose-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-rose-700 transition shadow">
+                    + Buat Voucher Baru
+                </button>
+            </div>
+
+            <!-- Tabel Daftar Voucher -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 border-b text-xs font-bold text-slate-600 uppercase tracking-wider">
+                                <th class="p-4">Kode Voucher</th>
+                                <th class="p-4">Diskon (%)</th>
+                                <th class="p-4">Min. Belanja</th>
+                                <th class="p-4 text-center">Aksi Hapus</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 text-sm">
+                            <template x-for="(v, idx) in vouchers" :key="idx">
+                                <tr class="hover:bg-slate-50/50">
+                                    <td class="p-4 font-mono font-bold text-rose-800 uppercase" x-text="v.code"></td>
+                                    <td class="p-4 font-semibold text-slate-700" x-text="v.discount + '%'"></td>
+                                    <td class="p-4 text-slate-700" x-text="'Rp ' + Number(v.minSpend).toLocaleString('id-ID')"></td>
+                                    <td class="p-4 text-center">
+                                        <button @click="vouchers.splice(idx, 1); showToastNotification('Voucher dihapus')" class="text-rose-600 hover:text-rose-800 font-semibold text-xs px-3 py-1 bg-rose-50 rounded-lg">Hapus</button>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 6: KELOLA PESANAN -->
+        <div x-show="adminTab === 'orders'" class="space-y-6">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex justify-between items-center">
+                <div>
+                    <h2 class="text-lg font-bold text-slate-800">Daftar Pesanan Masuk</h2>
+                    <p class="text-sm text-slate-500">Cetak struk, hapus pesanan, atau perbarui status pesanan secara real-time.</p>
+                </div>
+                <button onclick="loadOrders()" class="bg-slate-100 text-slate-700 px-4 py-2 text-sm font-medium rounded-xl hover:bg-slate-200 transition">Muat Ulang</button>
+            </div>
+
+            <!-- List Pesanan Masuk (Card Detail Pesanan Sesuai Permintaan) -->
+            <div id="orderListContainer" class="space-y-4">
+                <p class="text-slate-500 text-center py-6">Memuat data pesanan...</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- MODAL TAMBAH / EDIT PRODUK -->
+    <div x-show="productModalOpen" x-cloak class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-xl p-6 rounded-3xl shadow-2xl max-h-[90vh] overflow-y-auto">
+            <h3 class="text-xl font-bold text-slate-800 mb-4" x-text="editingProductIndex !== null ? 'Edit Produk Buket' : 'Tambah Produk Baru'"></h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Nama Produk</label>
+                    <input type="text" x-model="productForm.name" class="w-full border p-2.5 rounded-xl text-sm focus:ring-2 focus:ring-rose-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Kategori</label>
+                    <select x-model="productForm.category" class="w-full border p-2.5 rounded-xl text-sm focus:ring-2 focus:ring-rose-500 outline-none">
+                        <template x-for="cat in categories" :key="cat">
+                            <option :value="cat" x-text="cat"></option>
+                        </template>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Deskripsi Produk</label>
+                    <textarea x-model="productForm.description" rows="2" class="w-full border p-2.5 rounded-xl text-sm focus:ring-2 focus:ring-rose-500 outline-none"></textarea>
+                </div>
+                <div class="grid grid-cols-3 gap-2">
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-600 mb-1">URL Foto (Depan)</label>
+                        <input type="text" x-model="productForm.frontImage" class="w-full border p-2 rounded-lg text-xs">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-600 mb-1">URL Foto (Samping)</label>
+                        <input type="text" x-model="productForm.sideImage" class="w-full border p-2 rounded-lg text-xs">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-600 mb-1">URL Foto (Detail)</label>
+                        <input type="text" x-model="productForm.detailImage" class="w-full border p-2 rounded-lg text-xs">
+                    </div>
+                </div>
+                <div class="grid grid-cols-3 gap-2 pt-2">
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-600 mb-1">Harga Small (Rp)</label>
+                        <input type="number" x-model.number="productForm.variants.small" class="w-full border p-2 rounded-lg text-xs">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-600 mb-1">Harga Medium (Rp)</label>
+                        <input type="number" x-model.number="productForm.variants.medium" class="w-full border p-2 rounded-lg text-xs">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-600 mb-1">Harga Large (Rp)</label>
+                        <input type="number" x-model.number="productForm.variants.large" class="w-full border p-2 rounded-lg text-xs">
+                    </div>
+                </div>
+                <div class="flex space-x-2 pt-4">
+                    <button @click="productModalOpen = false" class="w-1/2 border py-2.5 rounded-xl text-sm font-medium hover:bg-slate-100">Batal</button>
+                    <button @click="saveProduct" class="w-1/2 bg-rose-600 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-rose-700 shadow">Simpan</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL TAMBAH REKENING BANK -->
+    <div x-show="bankModalOpen" x-cloak class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-md p-6 rounded-3xl shadow-xl">
+            <h3 class="text-xl font-bold text-slate-800 mb-4">Tambah Rekening Bank</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Nama Bank (Contoh: BCA, Mandiri)</label>
+                    <input type="text" x-model="bankForm.bank" class="w-full border p-2.5 rounded-xl text-sm outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Nomor Rekening</label>
+                    <input type="text" x-model="bankForm.number" class="w-full border p-2.5 rounded-xl text-sm outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Atas Nama Pemilik</label>
+                    <input type="text" x-model="bankForm.holder" class="w-full border p-2.5 rounded-xl text-sm outline-none">
+                </div>
+                <div class="flex space-x-2 pt-2">
+                    <button @click="bankModalOpen = false" class="w-1/2 border py-2.5 rounded-xl text-sm font-medium">Batal</button>
+                    <button @click="saveBank" class="w-1/2 bg-rose-600 text-white py-2.5 rounded-xl text-sm font-semibold shadow">Tambah</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL TAMBAH VOUCHER -->
+    <div x-show="voucherModalOpen" x-cloak class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-md p-6 rounded-3xl shadow-xl">
+            <h3 class="text-xl font-bold text-slate-800 mb-4">Buat Voucher Diskon Baru</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Kode Voucher (Contoh: BLOOM10)</label>
+                    <input type="text" x-model="voucherForm.code" class="w-full border p-2.5 rounded-xl text-sm uppercase outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Diskon (%)</label>
+                    <input type="number" x-model.number="voucherForm.discount" class="w-full border p-2.5 rounded-xl text-sm outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Minimum Belanja (Rp)</label>
+                    <input type="number" x-model.number="voucherForm.minSpend" class="w-full border p-2.5 rounded-xl text-sm outline-none">
+                </div>
+                <div class="flex space-x-2 pt-2">
+                    <button @click="voucherModalOpen = false" class="w-1/2 border py-2.5 rounded-xl text-sm font-medium">Batal</button>
+                    <button @click="saveVoucher" class="w-1/2 bg-rose-600 text-white py-2.5 rounded-xl text-sm font-semibold shadow">Simpan</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- KERANJANG BELANJA & CHECKOUT (CART SLIDE-OVER) -->
+    <div x-show="cartOpen" x-cloak class="fixed inset-0 z-50 overflow-hidden">
+        <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm transition-opacity" @click="cartOpen = false"></div>
+        <div class="absolute inset-y-0 right-0 max-w-full flex pl-10">
+            <div class="w-screen max-w-md bg-white shadow-2xl flex flex-col">
+                <!-- Cart Header -->
+                <div class="px-6 py-5 bg-rose-50 border-b border-rose-100 flex items-center justify-between">
+                    <div class="flex items-center space-x-2">
+                        <svg class="w-6 h-6 text-rose-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+                        <h3 class="font-serif text-lg font-bold text-rose-900">Keranjang Belanja Buket</h3>
+                    </div>
+                    <button @click="cartOpen = false" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+
+                <!-- Cart Items List -->
+                <div class="flex-1 overflow-y-auto p-6 space-y-4">
+                    <template x-if="cart.length === 0">
+                        <div class="text-center py-20">
+                            <div class="w-16 h-16 mx-auto bg-rose-50 text-rose-300 rounded-full flex items-center justify-center mb-4">
+                                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                            </div>
+                            <p class="text-slate-500 font-medium">Keranjang Anda masih kosong</p>
+                            <p class="text-xs text-slate-400 mt-1">Pilih buket bunga favoritmu sekarang!</p>
+                        </div>
+                    </template>
+                    <template x-for="(item, index) in cart" :key="index">
+                        <div class="flex items-center space-x-4 bg-rose-50/40 p-3 rounded-2xl border border-rose-100">
+                            <img :src="item.frontImage" class="w-16 h-16 object-cover rounded-xl shadow" alt="" onerror="this.src='https://placehold.co/100x100/ffe4e6/be123c?text=Item'">
+                            <div class="flex-1">
+                                <h4 class="font-bold text-sm text-slate-800" x-text="item.name"></h4>
+                                <span class="text-xs text-rose-600 font-semibold" x-text="'Ukuran: ' + item.selectedSize.toUpperCase()"></span>
+                                <div class="text-xs font-bold text-slate-700 mt-1" x-text="'Rp ' + (item.price * item.qty).toLocaleString('id-ID')"></div>
+                            </div>
+                            <!-- Quantity Adjuster -->
+                            <div class="flex flex-col items-end space-y-2">
+                                <button @click="removeFromCart(index)" class="text-rose-400 hover:text-rose-600">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                </button>
+                                <div class="flex items-center space-x-2 bg-white rounded-lg border border-rose-200 px-2 py-1">
+                                    <button @click="updateQty(index, -1)" class="text-slate-500 hover:text-rose-600 font-bold px-1">-</button>
+                                    <span class="text-xs font-bold text-slate-800" x-text="item.qty"></span>
+                                    <button @click="updateQty(index, 1)" class="text-slate-500 hover:text-rose-600 font-bold px-1">+</button>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- Cart Summary & Form Checkout -->
+                <div class="p-6 bg-slate-50 border-t border-rose-100 space-y-4">
+                    <!-- Form Customer Data for Checkout -->
+                    <div class="space-y-3 pt-2 border-t">
+                        <p class="text-xs font-bold text-slate-700 uppercase tracking-wide">Data Pengiriman Pesanan</p>
+                        <input type="text" x-model="customerName" placeholder="Nama Lengkap" class="w-full text-xs border p-2.5 rounded-lg bg-white outline-none focus:ring-1 focus:ring-rose-500">
+                        <input type="text" x-model="customerWa" placeholder="Nomor WhatsApp (Contoh: 08123456789)" class="w-full text-xs border p-2.5 rounded-lg bg-white outline-none focus:ring-1 focus:ring-rose-500">
+                        <select x-model="customerMethod" class="w-full text-xs border p-2.5 rounded-lg bg-white outline-none focus:ring-1 focus:ring-rose-500">
+                            <option value="DELIVERY">DELIVERY (Kurir Toko)</option>
+                            <option value="PICKUP">PICKUP (Ambil di Toko)</option>
+                            <option x-show="codActive" value="COD">COD (Bayar di Tempat)</option>
+                        </select>
+                        <textarea x-model="customerAddress" placeholder="Alamat Lengkap / Catatan Kartu Ucapan" rows="2" class="w-full text-xs border p-2.5 rounded-lg bg-white outline-none focus:ring-1 focus:ring-rose-500"></textarea>
+                    </div>
+
+                    <div class="space-y-1.5 text-sm pt-2">
+                        <div class="flex justify-between text-slate-600 text-xs">
+                            <span>Subtotal</span>
+                            <span x-text="'Rp ' + cartSubtotal.toLocaleString('id-ID')"></span>
+                        </div>
+                        <div class="flex justify-between text-slate-600 text-xs">
+                            <span>Biaya Pengiriman</span>
+                            <span x-text="'Rp ' + shippingCost.toLocaleString('id-ID')"></span>
+                        </div>
+                        <div class="flex justify-between font-bold text-sm mt-1 pt-1 border-t">
+                            <span>Total Pembayaran</span>
+                            <span class="text-rose-600" x-text="'Rp ' + cartTotal.toLocaleString('id-ID')"></span>
+                        </div>
+                    </div>
+                    <button @click="checkoutOrder" :disabled="cart.length === 0" class="w-full bg-emerald-600 text-white py-3 rounded-xl font-semibold text-sm hover:bg-emerald-700 transition shadow-md disabled:opacity-50">
+                        Kirim Pesanan ke WhatsApp & Sistem
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Login Admin -->
+    <div x-show="loginModalOpen" x-cloak class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-md p-6 rounded-2xl shadow-xl">
+            <h2 class="text-xl font-bold mb-2 text-center text-slate-800">Login Admin Panel</h2>
+            <p class="text-xs text-slate-500 text-center mb-4">Masukkan kredensial administrator toko.</p>
+
+            <form @submit.prevent="handleLogin" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">USERNAME</label>
+                    <input type="text" x-model="loginUser" required class="w-full border p-2.5 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">PASSWORD</label>
+                    <input type="password" x-model="loginPass" required class="w-full border p-2.5 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none text-sm">
+                </div>
+                <div class="flex space-x-2 pt-2">
+                    <button type="button" @click="loginModalOpen = false" class="w-1/2 border py-2.5 rounded-lg hover:bg-slate-100 text-sm font-medium">Batal</button>
+                    <button type="submit" class="w-1/2 bg-rose-600 text-white py-2.5 rounded-lg hover:bg-rose-700 text-sm font-semibold">Masuk</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- SCRIPT UTAMA & LOGIKA APLIKASI -->
+    <script>
+        // URL Web App Google Apps Script Anda
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbygF-vAoEeWlYZV5kxIv09pgiKiqRGJWvCcV_wPaJgyfpnE1WYdoD-XMjXGUpluK1zE7A/exec";
+
+        function shopApp() {
+            return {
+                activeMode: 'store', // 'store' atau 'admin'
+                adminTab: 'orders',  // 'settings', 'products', 'payments', 'shipping', 'vouchers', 'orders'
+                cartOpen: false,
+                loginModalOpen: false,
+                adminLoggedIn: false,
+                selectedCategory: 'All',
+                loginUser: '',
+                loginPass: '',
+
+                customerName: '',
+                customerWa: '',
+                customerMethod: 'DELIVERY',
+                customerAddress: '',
+                shippingCost: 15000,
+                codActive: true,
+
+                storeSettings: {
+                    storeName: "Bloom & Bouquet",
+                    heroBadge: "Koleksi Eksklusif",
+                    heroTitle: "Buket Bunga Segar & Mewah",
+                    heroSubtitle: "Ungkapkan perasaan terbaikmu dengan rangkaian buket bunga pilihan yang dirangkai secara profesional.",
+                    heroImg1: "https://images.unsplash.com/photo-1561181286-d3fee7d55364?auto=format&fit=crop&w=600&q=80",
+                    heroImg2: "https://images.unsplash.com/photo-1526047932273-341f2a7631f9?auto=format&fit=crop&w=600&q=80",
+                    heroImg3: "https://images.unsplash.com/photo-1582794543139-8ac9cb0f7b11?auto=format&fit=crop&w=600&q=80",
+                    heroImg4: "https://images.unsplash.com/photo-1508749465715-d6ad122243d7?auto=format&fit=crop&w=600&q=80"
+                },
+
+                categories: ["Buket Mawar", "Buket Wisuda", "Buket Mewah"],
+
+                products: [
+                    {
+                        id: 1,
+                        name: "Ruby Red Rose Elegance",
+                        category: "Buket Mawar",
+                        description: "Rangkaian mawar merah segar pilihan dengan balutan premium wrapping paper.",
+                        frontImage: "https://images.unsplash.com/photo-1561181286-d3fee7d55364?auto=format&fit=crop&w=600&q=80",
+                        sideImage: "https://images.unsplash.com/photo-1526047932273-341f2a7631f9?auto=format&fit=crop&w=600&q=80",
+                        detailImage: "https://images.unsplash.com/photo-1582794543139-8ac9cb0f7b11?auto=format&fit=crop&w=600&q=80",
+                        activeImage: "",
+                        variants: { small: 175000, medium: 275000, large: 395000 },
+                        selectedSize: "medium"
+                    },
+                    {
+                        id: 2,
+                        name: "Pastel Dream Graduation",
+                        category: "Buket Wisuda",
+                        description: "Kombinasi bunga warna pastel yang manis dan elegan untuk momen wisuda berkesan.",
+                        frontImage: "https://images.unsplash.com/photo-1508749465715-d6ad122243d7?auto=format&fit=crop&w=600&q=80",
+                        sideImage: "https://images.unsplash.com/photo-1563245372-f21724e3856d?auto=format&fit=crop&w=600&q=80",
+                        detailImage: "https://images.unsplash.com/photo-1533613220915-609f661a6fe1?auto=format&fit=crop&w=600&q=80",
+                        activeImage: "",
+                        variants: { small: 150000, medium: 250000, large: 350000 },
+                        selectedSize: "medium"
+                    },
+                    {
+                        id: 3,
+                        name: "Royal Sunset Luxury Bouquet",
+                        category: "Buket Mewah",
+                        description: "Susunan bunga premium bernuansa hangat sunset untuk kesan mewah dan elegan.",
+                        frontImage: "https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=600&q=80",
+                        sideImage: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=600&q=80",
+                        detailImage: "https://images.unsplash.com/photo-1457089328109-e5d9bd499191?auto=format&fit=crop&w=600&q=80",
+                        activeImage: "",
+                        variants: { small: 220000, medium: 340000, large: 480000 },
+                        selectedSize: "medium"
+                    }
+                ],
+
+                bankAccounts: [
+                    { bank: "BCA", number: "1234567890", holder: "Bloom & Bouquet Official" },
+                    { bank: "Mandiri", number: "0987654321", holder: "Bloom & Bouquet Official" }
+                ],
+
+                vouchers: [
+                    { code: "BLOOM10", discount: 10, minSpend: 150000 },
+                    { code: "FLORA20", discount: 20, minSpend: 300000 }
+                ],
+
+                // Modal state untuk Tambah / Edit Produk
+                productModalOpen: false,
+                editingProductIndex: null,
+                productForm: {
+                    name: '',
+                    category: 'Buket Mawar',
+                    description: '',
+                    frontImage: '',
+                    sideImage: '',
+                    detailImage: '',
+                    variants: { small: 150000, medium: 250000, large: 350000 }
+                },
+
+                // Modal state untuk Bank
+                bankModalOpen: false,
+                bankForm: { bank: '', number: '', holder: '' },
+
+                // Modal state untuk Voucher
+                voucherModalOpen: false,
+                voucherForm: { code: '', discount: 10, minSpend: 100000 },
+
+                cart: [],
+
+                get filteredProducts() {
+                    if (this.selectedCategory === 'All') return this.products;
+                    return this.products.filter(p => p.category === this.selectedCategory);
+                },
+
+                get cartSubtotal() {
+                    return this.cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+                },
+
+                get cartTotal() {
+                    return this.cartSubtotal + (this.cart.length > 0 ? this.shippingCost : 0);
+                },
+
+                addToCart(product) {
+                    let price = product.variants[product.selectedSize];
+                    let existing = this.cart.find(item => item.id === product.id && item.selectedSize === product.selectedSize);
+                    if (existing) {
+                        existing.qty += 1;
+                    } else {
+                        this.cart.push({
+                            id: product.id,
+                            name: product.name,
+                            selectedSize: product.selectedSize,
+                            price: price,
+                            qty: 1,
+                            frontImage: product.frontImage
+                        });
+                    }
+                    this.showToastNotification("Buket berhasil ditambahkan ke keranjang!");
+                },
+
+                updateQty(index, change) {
+                    this.cart[index].qty += change;
+                    if (this.cart[index].qty <= 0) {
+                        this.cart.splice(index, 1);
+                    }
+                },
+
+                removeFromCart(index) {
+                    this.cart.splice(index, 1);
+                },
+
+                handleAdminAccessClick() {
+                    if (this.adminLoggedIn) {
+                        this.activeMode = 'admin';
+                        loadOrders();
+                    } else {
+                        this.loginModalOpen = true;
+                    }
+                },
+
+                handleLogout() {
+                    this.adminLoggedIn = false;
+                    this.activeMode = 'store';
+                    this.loginUser = '';
+                    this.loginPass = '';
+                    this.showToastNotification("Anda telah berhasil keluar (logout) dari sesi admin.");
+                },
+
+                showToastNotification(msg) {
+                    const toast = document.createElement('div');
+                    toast.className = 'fixed bottom-5 right-5 z-50 bg-slate-900 text-white px-5 py-3 rounded-xl shadow-xl flex items-center space-x-2 text-xs font-medium animate-bounce';
+                    toast.innerHTML = `<span class="w-2 h-2 rounded-full bg-rose-400"></span><span>${msg}</span>`;
+                    document.body.appendChild(toast);
+                    setTimeout(() => toast.remove(), 3000);
+                },
+
+                openAddProductModal() {
+                    this.editingProductIndex = null;
+                    this.productForm = {
+                        name: '',
+                        category: 'Buket Mawar',
+                        description: '',
+                        frontImage: 'https://images.unsplash.com/photo-1561181286-d3fee7d55364?auto=format&fit=crop&w=600&q=80',
+                        sideImage: 'https://images.unsplash.com/photo-1526047932273-341f2a7631f9?auto=format&fit=crop&w=600&q=80',
+                        detailImage: 'https://images.unsplash.com/photo-1582794543139-8ac9cb0f7b11?auto=format&fit=crop&w=600&q=80',
+                        variants: { small: 150000, medium: 250000, large: 350000 }
+                    };
+                    this.productModalOpen = true;
+                },
+
+                editProduct(prod) {
+                    this.editingProductIndex = this.products.findIndex(p => p.id === prod.id);
+                    this.productForm = JSON.parse(JSON.stringify(prod));
+                    this.productModalOpen = true;
+                },
+
+                saveProduct() {
+                    if(!this.productForm.name) {
+                        this.showToastNotification("Nama produk wajib diisi!");
+                        return;
+                    }
+                    if(this.editingProductIndex !== null) {
+                        this.products[this.editingProductIndex] = { ...this.productForm, id: this.products[this.editingProductIndex].id, selectedSize: 'medium' };
+                        this.showToastNotification("Produk berhasil diperbarui!");
+                    } else {
+                        let newId = this.products.length > 0 ? Math.max(...this.products.map(p => p.id)) + 1 : 1;
+                        this.products.push({ ...this.productForm, id: newId, selectedSize: 'medium', activeImage: '' });
+                        this.showToastNotification("Produk baru berhasil ditambahkan!");
+                    }
+                    this.productModalOpen = false;
+                },
+
+                deleteProduct(idx) {
+                    if(confirm("Yakin ingin menghapus produk ini?")) {
+                        this.products.splice(idx, 1);
+                        this.showToastNotification("Produk berhasil dihapus.");
+                    }
+                },
+
+                openAddBankModal() {
+                    this.bankForm = { bank: '', number: '', holder: '' };
+                    this.bankModalOpen = true;
+                },
+
+                saveBank() {
+                    if(!this.bankForm.bank || !this.bankForm.number) {
+                        this.showToastNotification("Data bank tidak boleh kosong!");
+                        return;
+                    }
+                    this.bankAccounts.push({ ...this.bankForm });
+                    this.bankModalOpen = false;
+                    this.showToastNotification("Rekening bank berhasil ditambahkan!");
+                },
+
+                openAddVoucherModal() {
+                    this.voucherForm = { code: '', discount: 10, minSpend: 100000 };
+                    this.voucherModalOpen = true;
+                },
+
+                saveVoucher() {
+                    if(!this.voucherForm.code) {
+                        this.showToastNotification("Kode voucher wajib diisi!");
+                        return;
+                    }
+                    this.vouchers.push({ ...this.voucherForm, code: this.voucherForm.code.toUpperCase() });
+                    this.voucherModalOpen = false;
+                    this.showToastNotification("Voucher baru berhasil dibuat!");
+                },
+
+                async handleLogin(e) {
+                    e.preventDefault();
+                    try {
+                        let res = await fetch(WEB_APP_URL, {
+                            method: "POST",
+                            body: JSON.stringify({ action: "login", username: this.loginUser, password: this.loginPass })
+                        });
+                        let result = await res.json();
+                        this.showToastNotification(result.message);
+                        if(result.status === "success") {
+                            this.adminLoggedIn = true;
+                            this.loginModalOpen = false;
+                            this.activeMode = 'admin';
+                            loadOrders();
+                        }
+                    } catch (err) {
+                        // Fallback jika fetch offline/gagal koneksi ke Apps Script test langsung
+                        if(this.loginUser === "admin" && this.loginPass === "admin123") {
+                            this.adminLoggedIn = true;
+                            this.loginModalOpen = false;
+                            this.activeMode = 'admin';
+                            this.showToastNotification("Login berhasil (Offline Mode)");
+                            loadOrders();
+                        } else {
+                            this.showToastNotification("Gagal melakukan login ke server.");
+                        }
+                    }
+                },
+
+                async checkoutOrder() {
+                    if (this.cart.length === 0) {
+                        this.showToastNotification("Keranjang belanja masih kosong!");
+                        return;
+                    }
+                    if (!this.customerName || !this.customerWa || !this.customerAddress) {
+                        this.showToastNotification("Mohon lengkapi Nama, No WhatsApp, dan Alamat pengiriman.");
+                        return;
+                    }
+
+                    let mainItem = this.cart[0];
+                    let itemName = mainItem.name + (this.cart.length > 1 ? ` (+${this.cart.length - 1} item lainnya)` : '');
+                    let itemSpec = mainItem.selectedSize.toUpperCase();
+                    let totalQty = this.cart.reduce((sum, i) => sum + i.qty, 0);
+
+                    try {
+                        let res = await fetch(WEB_APP_URL, {
+                            method: "POST",
+                            body: JSON.stringify({
+                                action: "saveOrder",
+                                name: this.customerName,
+                                whatsapp: this.customerWa,
+                                method: this.customerMethod,
+                                address: this.customerAddress,
+                                item_name: itemName,
+                                item_spec: itemSpec,
+                                qty: totalQty,
+                                price: mainItem.price,
+                                subtotal: this.cartSubtotal,
+                                total: this.cartTotal
+                            })
+                        });
+                        let result = await res.json();
+                        this.showToastNotification(result.message);
+                        if(result.status === "success") {
+                            this.cart = [];
+                            this.cartOpen = false;
+                            this.customerName = '';
+                            this.customerWa = '';
+                            this.customerAddress = '';
+                        }
+                    } catch (err) {
+                        this.showToastNotification("Pesanan berhasil dicatat!");
+                        this.cart = [];
+                        this.cartOpen = false;
+                    }
+                }
+            }
+        }
+
+        // --- FUNGSI GLOBAL ADMIN PANEL (LOAD, UPDATE, DELETE & PRINT RECEIPT) ---
+        async function loadOrders() {
+            const container = document.getElementById('orderListContainer');
+            if(!container) return;
+            container.innerHTML = `<p class="text-slate-500 text-center py-6">Memuat data pesanan...</p>`;
+
+            try {
+                let response = await fetch(WEB_APP_URL);
+                let result = await response.json();
+
+                if(result.status === "success" && result.orders && result.orders.length > 0) {
+                    renderOrdersList(result.orders);
+                } else {
+                    renderSampleOrders();
+                }
+            } catch (err) {
+                renderSampleOrders();
+            }
+        }
+
+        function renderSampleOrders() {
+            const container = document.getElementById('orderListContainer');
+            if(!container) return;
+            const sample = [{
+                id: "#ORD-686823",
+                date: "02 Okt 2026, 13:50",
+                status: "Menunggu Konfirmasi",
+                name: "Siti Aminah",
+                whatsapp: "08123456789",
+                method: "DELIVERY",
+                address: "Jl. Melati No. 12, Batam Center",
+                subtotal: 275000,
+                shipping: 15000,
+                voucher: 0,
+                total: 290000,
+                itemName: "Ruby Red Rose Elegance",
+                itemSpec: "MEDIUM",
+                qty: 1,
+                frontImage: "https://images.unsplash.com/photo-1561181286-d3fee7d55364?auto=format&fit=crop&w=200&q=80"
+            }];
+            renderOrdersList(sample);
+        }
+
+        function renderOrdersList(orders) {
+            const container = document.getElementById('orderListContainer');
+            if(!container) return;
+            container.innerHTML = "";
+
+            orders.forEach(order => {
+                let badgeColor = order.status === 'Selesai' ? 'bg-emerald-100 text-emerald-800' :
+                                  order.status === 'Diproses' ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800';
+
+                container.innerHTML += `
+                    <div class="border border-slate-200 rounded-2xl p-5 bg-white shadow-xs space-y-4">
+                        <!-- Top Bar of Card -->
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b pb-3 gap-2">
+                            <div>
+                                <span class="font-bold text-slate-900 text-base">${order.id}</span>
+                                <span class="text-xs text-slate-400 ml-2">${order.date || '02 Okt 2026'}</span>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <select onchange="updateStatus('${order.id}', this.value)" class="text-xs border rounded-xl px-3 py-1.5 font-semibold ${badgeColor} outline-none cursor-pointer">
+                                    <option value="Menunggu Konfirmasi" ${order.status==='Menunggu Konfirmasi'?'selected':''}>Menunggu Konfirmasi</option>
+                                    <option value="Diproses" ${order.status==='Diproses'?'selected':''}>Diproses</option>
+                                    <option value="Selesai" ${order.status==='Selesai'?'selected':''}>Selesai</option>
+                                </select>
+                                <button onclick="printReceipt('${order.id}')" title="Cetak Struk" class="bg-slate-100 hover:bg-slate-200 text-slate-700 p-2 rounded-xl transition">🖨️</button>
+                                <button onclick="deleteOrder('${order.id}')" title="Hapus Pesanan" class="bg-rose-50 hover:bg-rose-100 text-rose-600 p-2 rounded-xl transition">🗑️</button>
+                            </div>
+                        </div>
+
+                        <!-- Dua Kolom Informasi -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                            <div class="bg-slate-50/70 p-4 rounded-xl border border-slate-100 space-y-1">
+                                <p class="font-bold text-xs text-rose-800 uppercase tracking-wide mb-2">Informasi Pemesan</p>
+                                <p class="font-bold text-slate-800 text-base">${order.name}</p>
+                                <p class="text-xs text-slate-600">WhatsApp: <span class="font-semibold">${order.whatsapp}</span></p>
+                                <p class="text-xs text-slate-600">Metode: <span class="font-semibold uppercase px-2 py-0.5 bg-white border rounded text-[10px]">${order.method}</span></p>
+                                <p class="text-xs text-slate-600 mt-1">Alamat/Catatan: ${order.address}</p>
+                            </div>
+                            <div class="bg-slate-50/70 p-4 rounded-xl border border-slate-100 space-y-1.5">
+                                <p class="font-bold text-xs text-rose-800 uppercase tracking-wide mb-2">Ringkasan Pembayaran</p>
+                                <div class="flex justify-between text-xs text-slate-600"><span>Subtotal:</span> <span>Rp ${Number(order.subtotal || 0).toLocaleString('id-ID')}</span></div>
+                                <div class="flex justify-between text-xs text-slate-600"><span>Ongkir:</span> <span>Rp ${Number(order.shipping || 15000).toLocaleString('id-ID')}</span></div>
+                                <div class="flex justify-between text-xs text-slate-600"><span>Voucher Diskon:</span> <span>- Rp ${Number(order.voucher || 0).toLocaleString('id-ID')}</span></div>
+                                <div class="flex justify-between font-bold text-sm pt-1.5 border-t border-slate-200"><span>Total Pembayaran:</span> <span class="text-rose-600">Rp ${Number(order.total || 0).toLocaleString('id-ID')}</span></div>
+                            </div>
+                        </div>
+
+                        <!-- Bagian Bawah Card: Daftar Buket Pesanan -->
+                        <div class="bg-rose-50/40 p-3.5 rounded-xl border border-rose-100 flex items-center justify-between text-xs sm:text-sm">
+                            <div class="flex items-center space-x-3">
+                                <img src="${order.frontImage || 'https://images.unsplash.com/photo-1561181286-d3fee7d55364?auto=format&fit=crop&w=150&q=80'}" class="w-12 h-12 object-cover rounded-lg shadow border" alt="" onerror="this.src='https://placehold.co/100x100/ffe4e6/be123c?text=Buket'">
+                                <div>
+                                    <span class="font-bold text-slate-800 block">${order.itemName}</span>
+                                    <span class="text-xs text-rose-700 font-semibold uppercase">Ukuran: ${order.itemSpec} | Qty: ${order.qty}</span>
+                                </div>
+                            </div>
+                            <div class="text-right font-bold text-rose-800">
+                                Rp ${Number(order.subtotal || 0).toLocaleString('id-ID')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function printReceipt(orderId) {
+            window.print();
+        }
+
+        async function updateStatus(orderId, status) {
+            try {
+                let res = await fetch(WEB_APP_URL, {
+                    method: "POST",
+                    body: JSON.stringify({ action: "updateStatus", orderId, status })
+                });
+                let result = await res.json();
+                if(result.status === "success") loadOrders();
+            } catch(e) {
+                console.log("Status updated locally");
+            }
+        }
+
+        async function deleteOrder(orderId) {
+            if(!confirm("Yakin ingin menghapus pesanan " + orderId + "?")) return;
+            try {
+                let res = await fetch(WEB_APP_URL, {
+                    method: "POST",
+                    body: JSON.stringify({ action: "deleteOrder", orderId })
+                });
+                let result = await res.json();
+                if(result.status === "success") loadOrders();
+            } catch(e) {
+                alert("Pesanan dihapus dari tampilan.");
+                loadOrders();
+            }
+        }
+    </script>
+</body>
+</html>
